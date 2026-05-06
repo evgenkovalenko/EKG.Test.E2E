@@ -70,3 +70,13 @@ dc_resource('jpe-broadcast', labels=['jpe'],
 dc_resource('jpe-operator-proxy', labels=['jpe'],
             links=[link('http://localhost:5013/scalar/v1', 'Operator Proxy API')],
             trigger_mode=TRIGGER_MODE_MANUAL)
+
+# ── CasinoWeb frontend ────────────────────────────────────────────────────────
+
+local_resource(
+    'casinoweb',
+    serve_cmd='npm run dev',
+    dir='../../../EKG.App.CasinoWeb',
+    labels=['frontend'],
+    links=[link('http://localhost:5174', 'Casino Web')],
+)
