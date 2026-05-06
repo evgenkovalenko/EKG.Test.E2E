@@ -1,0 +1,6 @@
+# .env files (contain secrets)
+.env
+
+# OS
+.DS_Store
+Thumbs.db

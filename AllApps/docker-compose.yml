@@ -1,0 +1,180 @@
+services:
+
+  # ── infrastructure ────────────────────────────────────────────────────────────
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"   # management UI → http://localhost:15672  guest/guest
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── PAM service ───────────────────────────────────────────────────────────────
+
+  pam:
+    image: ghcr.io/evgenkovalenko/ekg.app.pam:latest
+    ports:
+      - "5030:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__MongoDb: mongodb://mongo:27017
+      Redis__ConnectionString: redis:6379
+      SessionManager__TtlMinutes: "120"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/openapi/v1.json || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # ── Wallet service ────────────────────────────────────────────────────────────
+
+  wallet:
+    image: ghcr.io/evgenkovalenko/ekg.app.wallet:latest
+    ports:
+      - "5020:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__MongoDb: mongodb://mongo:27017
+      Redis__ConnectionString: redis:6379
+      SessionManager__TtlMinutes: "120"
+      Wallet__NodeId: "20"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      pam:
+        condition: service_healthy
+
+  # ── GameLaunch service ────────────────────────────────────────────────────────
+
+  gamelaunch:
+    image: ghcr.io/evgenkovalenko/ekg.app.gamelaunch:latest
+    ports:
+      - "5040:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+
+  # ── JPE services ──────────────────────────────────────────────────────────────
+
+  jpe-admin:
+    image: ghcr.io/evgenkovalenko/ekg.app.jpe.admin:latest
+    ports:
+      - "5010:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__MongoDb: mongodb://mongo:27017
+      Redis__ConnectionString: redis:6379
+      MessageBroker__Host: amqp://guest:guest@rabbitmq:5672/
+      MessageBroker__Username: guest
+      MessageBroker__Password: guest
+      Jpe__NodeId: "10"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  jpe-be:
+    image: ghcr.io/evgenkovalenko/ekg.app.jpe.be:latest
+    ports:
+      - "5011:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__MongoDb: mongodb://mongo:27017
+      Redis__ConnectionString: redis:6379
+      MessageBroker__Host: amqp://guest:guest@rabbitmq:5672/
+      MessageBroker__Username: guest
+      MessageBroker__Password: guest
+      Jpe__NodeId: "11"
+      Wallet__Url: http://wallet:8080
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      wallet:
+        condition: service_started
+
+  jpe-broadcast:
+    image: ghcr.io/evgenkovalenko/ekg.app.jpe.broadcast:latest
+    ports:
+      - "5012:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__MongoDb: mongodb://mongo:27017
+      Redis__ConnectionString: redis:6379
+      MessageBroker__Host: amqp://guest:guest@rabbitmq:5672/
+      MessageBroker__Username: guest
+      MessageBroker__Password: guest
+      Jpe__NodeId: "12"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  jpe-operator-proxy:
+    image: ghcr.io/evgenkovalenko/ekg.app.jpe.operatorproxy:latest
+    ports:
+      - "5013:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Jpe__BeUrl: http://jpe-be:8080
+      Jpe__TimeoutSeconds: "5"
+      Jpe__RetryCount: "3"
+      Operators__Generic__PamUrl: http://pam:8080
+    depends_on:
+      - jpe-be
+      - pam
+
+volumes:
+  mongo-data:

@@ -1,0 +1,50 @@
+# AllApps local dev — all apps + local mongo/redis/rabbitmq in Rancher Desktop
+# Requires: Rancher Desktop with dockerd enabled, Tilt installed
+#
+# Start:  tilt up
+# Stop:   tilt down
+
+docker_compose('docker-compose.yml')
+
+# ── infrastructure ────────────────────────────────────────────────────────────
+
+dc_resource('mongo',    labels=['infra'])
+dc_resource('redis',    labels=['infra'])
+dc_resource('rabbitmq', labels=['infra'],
+            links=[link('http://localhost:15672', 'RabbitMQ management (guest/guest)')])
+
+# ── PAM service ───────────────────────────────────────────────────────────────
+
+dc_resource('pam', labels=['pam'],
+            links=[link('http://localhost:5030/scalar/v1', 'PAM API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+# ── Wallet service ────────────────────────────────────────────────────────────
+
+dc_resource('wallet', labels=['wallet'],
+            links=[link('http://localhost:5020/scalar/v1', 'Wallet API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+# ── GameLaunch service ────────────────────────────────────────────────────────
+
+dc_resource('gamelaunch', labels=['gamelaunch'],
+            links=[link('http://localhost:5040/scalar/v1', 'GameLaunch API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+# ── JPE services ──────────────────────────────────────────────────────────────
+
+dc_resource('jpe-admin', labels=['jpe'],
+            links=[link('http://localhost:5010/scalar/v1', 'Admin API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+dc_resource('jpe-be', labels=['jpe'],
+            links=[link('http://localhost:5011/scalar/v1', 'BE API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+dc_resource('jpe-broadcast', labels=['jpe'],
+            links=[link('http://localhost:5012/scalar/v1', 'Broadcast API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+dc_resource('jpe-operator-proxy', labels=['jpe'],
+            links=[link('http://localhost:5013/scalar/v1', 'Operator Proxy API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
