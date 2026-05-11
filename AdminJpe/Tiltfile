@@ -23,14 +23,14 @@ dc_resource('wallet', labels=['supporting'],
             links=[link('http://localhost:5020/scalar/v1', 'Wallet API')],
             trigger_mode=TRIGGER_MODE_MANUAL)
 
-dc_resource('jpe-admin', labels=['supporting'],
-            links=[link('http://localhost:5010/scalar/v1', 'JPE Admin API')],
+dc_resource('jpe-be', labels=['supporting'],
+            links=[link('http://localhost:5011/scalar/v1', 'JPE BE API')],
             trigger_mode=TRIGGER_MODE_MANUAL)
 
 # ── JPE services ──────────────────────────────────────────────────────────────
 
-dc_resource('jpe-be', labels=['jpe'],
-            links=[link('http://localhost:5011/scalar/v1', 'JPE BE API')],
+dc_resource('jpe-admin', labels=['jpe'],
+            links=[link('http://localhost:5010/scalar/v1', 'JPE Admin API')],
             trigger_mode=TRIGGER_MODE_MANUAL)
 
 dc_resource('jpe-bo', labels=['jpe'],
