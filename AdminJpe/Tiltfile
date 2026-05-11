@@ -1,0 +1,48 @@
+# AdminJpe local dev — Admin UI/BE + JPE BE + JPE BO + local infrastructure
+# Requires: Rancher Desktop with dockerd enabled, Tilt installed
+#
+# Start:  tilt up
+# Stop:   tilt down
+
+docker_compose('docker-compose.yml')
+
+# ── infrastructure ────────────────────────────────────────────────────────────
+
+dc_resource('mongo',    labels=['infra'])
+dc_resource('redis',    labels=['infra'])
+dc_resource('rabbitmq', labels=['infra'],
+            links=[link('http://localhost:15672', 'RabbitMQ management (guest/guest)')])
+
+# ── supporting services ───────────────────────────────────────────────────────
+
+dc_resource('pam', labels=['supporting'],
+            links=[link('http://localhost:5030/scalar/v1', 'PAM API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+dc_resource('wallet', labels=['supporting'],
+            links=[link('http://localhost:5020/scalar/v1', 'Wallet API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+dc_resource('jpe-admin', labels=['supporting'],
+            links=[link('http://localhost:5010/scalar/v1', 'JPE Admin API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+# ── JPE services ──────────────────────────────────────────────────────────────
+
+dc_resource('jpe-be', labels=['jpe'],
+            links=[link('http://localhost:5011/scalar/v1', 'JPE BE API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+dc_resource('jpe-bo', labels=['jpe'],
+            links=[link('http://localhost:5090', 'JPE Backoffice')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+# ── Admin service ─────────────────────────────────────────────────────────────
+
+dc_resource('admin-be', labels=['admin'],
+            links=[link('http://localhost:5080/scalar/v1', 'Admin BE API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+dc_resource('admin-ui', labels=['admin'],
+            links=[link('http://localhost:5071', 'Admin UI')],
+            trigger_mode=TRIGGER_MODE_MANUAL)

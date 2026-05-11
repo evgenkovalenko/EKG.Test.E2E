@@ -1,0 +1,70 @@
+# AdminJpe cloud dev — all apps in Rancher Desktop, connected to remote clusters
+# Requires: Rancher Desktop with dockerd enabled, Tilt installed
+#
+# Configure .env in this folder before starting:
+#
+#   MONGO_URL=mongodb+srv://user:pass@cluster.mongodb.net
+#   REDIS_URL=rediss://user:pass@redis-host:6380
+#   RABBITMQ_URL=amqps://user:pass@rabbit-host
+#   RABBITMQ_USER=user
+#   RABBITMQ_PASS=pass
+#
+# Start:  tilt up -f Tiltfile.cloud
+# Stop:   tilt down -f Tiltfile.cloud
+
+watch_file('.env')
+
+def _parse_env(path):
+    result = {}
+    for line in str(read_file(path, default = '')).splitlines():
+        line = line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        k, v = line.split('=', 1)
+        result[k.strip()] = v.strip()
+    return result
+
+_env = _parse_env('.env')
+
+if not _env.get('MONGO_URL', ''):
+    warn('MONGO_URL is not set in .env — services will fail to connect to MongoDB')
+if not _env.get('REDIS_URL', ''):
+    warn('REDIS_URL is not set in .env — services will fail to connect to Redis')
+if not _env.get('RABBITMQ_URL', ''):
+    warn('RABBITMQ_URL is not set in .env — services will fail to connect to RabbitMQ')
+
+docker_compose('docker-compose.cloud.yml')
+
+# ── supporting services ───────────────────────────────────────────────────────
+
+dc_resource('pam', labels=['supporting'],
+            links=[link('http://localhost:5030/scalar/v1', 'PAM API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+dc_resource('wallet', labels=['supporting'],
+            links=[link('http://localhost:5020/scalar/v1', 'Wallet API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+dc_resource('jpe-admin', labels=['supporting'],
+            links=[link('http://localhost:5010/scalar/v1', 'JPE Admin API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+# ── JPE services ──────────────────────────────────────────────────────────────
+
+dc_resource('jpe-be', labels=['jpe'],
+            links=[link('http://localhost:5011/scalar/v1', 'JPE BE API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+dc_resource('jpe-bo', labels=['jpe'],
+            links=[link('http://localhost:5090', 'JPE Backoffice')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+# ── Admin service ─────────────────────────────────────────────────────────────
+
+dc_resource('admin-be', labels=['admin'],
+            links=[link('http://localhost:5080/scalar/v1', 'Admin BE API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+dc_resource('admin-ui', labels=['admin'],
+            links=[link('http://localhost:5071', 'Admin UI')],
+            trigger_mode=TRIGGER_MODE_MANUAL)

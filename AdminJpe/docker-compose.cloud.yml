@@ -1,0 +1,112 @@
+# Runs all apps connected to remote infrastructure.
+# Set variables in a .env file before starting:
+#
+#   MONGO_URL=mongodb+srv://user:pass@cluster.mongodb.net
+#   REDIS_URL=rediss://user:pass@redis-host:6380
+#   RABBITMQ_URL=amqps://user:pass@rabbit-host
+#   RABBITMQ_USER=user
+#   RABBITMQ_PASS=pass
+#
+# Usage:
+#   docker compose -f docker-compose.cloud.yml up
+#   tilt up -f Tiltfile.cloud
+
+services:
+
+  # ── supporting services ───────────────────────────────────────────────────────
+
+  pam:
+    image: ghcr.io/evgenkovalenko/ekg.app.pam:latest
+    ports:
+      - "5030:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__MongoDb: ${MONGO_URL}
+      Redis__ConnectionString: ${REDIS_URL}
+      SessionManager__TtlMinutes: "120"
+
+  wallet:
+    image: ghcr.io/evgenkovalenko/ekg.app.wallet:latest
+    ports:
+      - "5020:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__MongoDb: ${MONGO_URL}
+      Redis__ConnectionString: ${REDIS_URL}
+      SessionManager__TtlMinutes: "120"
+      Wallet__NodeId: "20"
+    depends_on:
+      - pam
+
+  jpe-admin:
+    image: ghcr.io/evgenkovalenko/ekg.app.jpe.admin:latest
+    ports:
+      - "5010:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__MongoDb: ${MONGO_URL}
+      Redis__ConnectionString: ${REDIS_URL}
+      MessageBroker__Host: ${RABBITMQ_URL}
+      MessageBroker__Username: ${RABBITMQ_USER}
+      MessageBroker__Password: ${RABBITMQ_PASS}
+      Jpe__NodeId: "10"
+
+  # ── JPE services ──────────────────────────────────────────────────────────────
+
+  jpe-be:
+    image: ghcr.io/evgenkovalenko/ekg.app.jpe.be:latest
+    ports:
+      - "5011:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__MongoDb: ${MONGO_URL}
+      Redis__ConnectionString: ${REDIS_URL}
+      MessageBroker__Host: ${RABBITMQ_URL}
+      MessageBroker__Username: ${RABBITMQ_USER}
+      MessageBroker__Password: ${RABBITMQ_PASS}
+      Jpe__NodeId: "11"
+      Wallet__Url: http://wallet:8080
+    depends_on:
+      - wallet
+
+  jpe-bo:
+    image: ghcr.io/evgenkovalenko/ekg.app.jpe.bo:latest
+    ports:
+      - "5090:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Redis__ConnectionString: ${REDIS_URL}
+      JpeAdmin__BaseUrl: http://jpe-admin:8080
+    depends_on:
+      - jpe-admin
+
+  # ── Admin service ─────────────────────────────────────────────────────────────
+
+  admin-be:
+    image: ghcr.io/evgenkovalenko/ekg.app.admin.be:latest
+    ports:
+      - "5080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__MongoDb: ${MONGO_URL}
+      Redis__ConnectionString: ${REDIS_URL}
+      Admin__SeedUsername: admin
+      Admin__SeedEmail: admin@ekg.local
+      Admin__SeedPassword: Admin1234!
+
+  admin-ui:
+    image: ghcr.io/evgenkovalenko/ekg.app.admin.ui:latest
+    ports:
+      - "5071:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      AdminBe__BaseUrl: http://localhost:5080
+    depends_on:
+      - admin-be
