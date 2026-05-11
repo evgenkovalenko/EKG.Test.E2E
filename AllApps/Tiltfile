@@ -49,6 +49,10 @@ dc_resource('jpe-operator-proxy', labels=['jpe'],
             links=[link('http://localhost:5013/scalar/v1', 'Operator Proxy API')],
             trigger_mode=TRIGGER_MODE_MANUAL)
 
+dc_resource('jpe-bo', labels=['jpe'],
+            links=[link('http://localhost:5090', 'JPE Backoffice')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
 # ── Admin service ─────────────────────────────────────────────────────────────
 
 dc_resource('admin-be', labels=['admin'],

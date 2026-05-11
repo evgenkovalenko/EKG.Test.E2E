@@ -170,6 +170,21 @@ services:
       - jpe-be
       - pam
 
+  jpe-bo:
+    image: ghcr.io/evgenkovalenko/ekg.app.jpe.bo:latest
+    ports:
+      - "5090:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Redis__ConnectionString: redis:6379
+      JpeAdmin__BaseUrl: http://jpe-admin:8080
+    depends_on:
+      redis:
+        condition: service_healthy
+      jpe-admin:
+        condition: service_started
+
   # ── Admin service ─────────────────────────────────────────────────────────────
 
   admin-be:
