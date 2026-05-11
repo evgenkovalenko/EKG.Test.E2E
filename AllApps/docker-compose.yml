@@ -170,5 +170,36 @@ services:
       - jpe-be
       - pam
 
+  # ── Admin service ─────────────────────────────────────────────────────────────
+
+  admin-be:
+    image: ghcr.io/evgenkovalenko/ekg.app.admin.be:latest
+    ports:
+      - "5080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__MongoDb: mongodb://mongo:27017
+      Redis__ConnectionString: redis:6379
+      Admin__SeedUsername: admin
+      Admin__SeedEmail: admin@ekg.local
+      Admin__SeedPassword: Admin1234!
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  admin-ui:
+    image: ghcr.io/evgenkovalenko/ekg.app.admin.ui:latest
+    ports:
+      - "5071:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      AdminBe__BaseUrl: http://localhost:5080
+    depends_on:
+      - admin-be
+
 volumes:
   mongo-data:

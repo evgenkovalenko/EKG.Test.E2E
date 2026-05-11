@@ -49,6 +49,16 @@ dc_resource('jpe-operator-proxy', labels=['jpe'],
             links=[link('http://localhost:5013/scalar/v1', 'Operator Proxy API')],
             trigger_mode=TRIGGER_MODE_MANUAL)
 
+# ── Admin service ─────────────────────────────────────────────────────────────
+
+dc_resource('admin-be', labels=['admin'],
+            links=[link('http://localhost:5080/scalar/v1', 'Admin BE API')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
+dc_resource('admin-ui', labels=['admin'],
+            links=[link('http://localhost:5071', 'Admin UI')],
+            trigger_mode=TRIGGER_MODE_MANUAL)
+
 # ── CasinoWeb frontend ────────────────────────────────────────────────────────
 
 local_resource(
