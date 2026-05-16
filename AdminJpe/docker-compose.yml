@@ -110,6 +110,12 @@ services:
       MessageBroker__Host: amqp://guest:guest@rabbitmq:5672/
       MessageBroker__Username: guest
       MessageBroker__Password: guest
+      MessageBroker__Topics__JackpotDataUpdatesConsumer__QueueName: jpe-jackpot-data-updates
+      MessageBroker__Topics__JackpotDataUpdatesConsumer__PrefetchCount: "1"
+      MessageBroker__Topics__JackpotDataUpdatesConsumer__ConcurrentMessageLimit: "1"
+      MessageBroker__Topics__JpeGeneralSettingsUpdatedConsumer__QueueName: jpe-general-settings-updates
+      MessageBroker__Topics__JpeGeneralSettingsUpdatedConsumer__PrefetchCount: "1"
+      MessageBroker__Topics__JpeGeneralSettingsUpdatedConsumer__ConcurrentMessageLimit: "1"
       Jpe__NodeId: "11"
       Wallet__Url: http://wallet:8080
     depends_on:
@@ -131,6 +137,7 @@ services:
       ASPNETCORE_URLS: http://+:8080
       Redis__ConnectionString: redis:6379
       JpeAdmin__BaseUrl: http://jpe-admin:8080
+      JpeSettings__WidgetsBaseUrl: https://pub-d441b9842695419293a2ee0db0538a6a.r2.dev
     depends_on:
       redis:
         condition: service_healthy
